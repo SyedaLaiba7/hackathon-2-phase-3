@@ -1,4 +1,5 @@
 fastapi>=0.126.0
+mangum>=0.18.0
 openai>=2.14.0
 passlib[bcrypt]>=1.7.4
 psycopg2-binary>=2.9.11

@@ -24,8 +24,9 @@ frontend_url = os.getenv("FRONTEND_URL", "")
 if frontend_url:
     origins.append(frontend_url)
 
-# Allow Vercel preview deployments if enabled (for PR previews)
-allow_vercel_previews = os.getenv("ALLOW_VERCEL_PREVIEWS", "false").lower() == "true"
+# Allow Vercel preview deployments (both frontend and backend on Vercel)
+# This allows all Vercel deployments to access the API
+allow_vercel_previews = os.getenv("ALLOW_VERCEL_PREVIEWS", "true").lower() == "true"
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,10 +38,16 @@ app.add_middleware(
 )
 
 # Initialize database on startup
+# Note: In serverless environments, this runs on cold start
 @app.on_event("startup")
 async def startup_event():
     """Initialize database tables on application startup."""
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        # Log error but don't fail startup (tables might already exist)
+        import logging
+        logging.warning(f"Database initialization warning: {e}")
 
 # Include routers
 app.include_router(auth.router)
