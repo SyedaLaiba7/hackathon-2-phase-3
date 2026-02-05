@@ -1,4 +1,4 @@
-"""OpenAI Agent for Todo Management."""
+"""OpenRouter Agent for Todo Management using Mistral model."""
 import os
 import json
 from typing import List, Dict, Any
@@ -6,8 +6,20 @@ from openai import OpenAI
 from app.config import settings
 from app.mcp import tools
 
-# Initialize OpenAI client
-client = OpenAI(api_key=settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY"))
+# Initialize OpenRouter client (compatible with OpenAI SDK)
+openrouter_api_key = settings.OPENROUTER_API_KEY or os.getenv("OPENROUTER_API_KEY")
+if not openrouter_api_key:
+    raise ValueError("OPENROUTER_API_KEY environment variable is required")
+
+# Configure OpenAI client to use OpenRouter
+client = OpenAI(
+    api_key=openrouter_api_key,
+    base_url="https://openrouter.ai/api/v1",
+    default_headers={
+        "HTTP-Referer": settings.APP_URL or "https://github.com/your-username/todo-app",  # Optional: for tracking
+        "X-Title": settings.APP_NAME or "Todo Chatbot",  # Optional: for tracking
+    }
+)
 
 SYSTEM_PROMPT = """You are a helpful todo assistant. You help users manage their tasks through natural conversation.
 
@@ -40,7 +52,7 @@ User: "Mark task 1 as complete"
 You: "✓ 'Buy groceries' marked as complete!"
 """
 
-# Tool definitions for OpenAI
+# Tool definitions for OpenRouter (OpenAI-compatible format)
 TOOLS = [
     {
         "type": "function",
@@ -181,7 +193,7 @@ async def run_agent(
     session = None
 ) -> tuple[str, List[str]]:
     """
-    Run the OpenAI agent with tool calling.
+    Run the OpenRouter agent with tool calling (using Mistral model).
     
     Args:
         user_id: User ID
@@ -212,9 +224,10 @@ async def run_agent(
     while iteration < max_iterations:
         iteration += 1
         
-        # Call OpenAI
+        # Call OpenRouter API with Mistral model
+        model = settings.LLM_MODEL or "mistralai/mistral-small-3.1-24b-instruct:free"
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Using cheaper model, can upgrade to gpt-4 if needed
+            model=model,
             messages=messages,
             tools=TOOLS,
             tool_choice="auto"
